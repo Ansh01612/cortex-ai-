@@ -3,6 +3,8 @@ import { PLANS } from "../config/Plans.js"
 import razorpay from "../config/razorpay.js"
 import Payment from "../models/payment.model.js"
 import crypto from "crypto"
+import User from "../../auth/models/user.model.js"
+import redis from "../../../shared/redis/redis.js"
 export const createOrder = async (req, res) => {
     try {
         const { plan } = req.body
@@ -62,8 +64,31 @@ export const verifyPayment = async (req,res) => {
  payment.paymentId=razorpay_payment_id
  await payment.save()
 
- const {data}=await axios.post(`${process.env.AUTH_SERVICE}/update-plan`,{userId:payment.userId,plan:payment.plan,credits:payment.credits})
- console.log(data)
+ if (process.env.VERCEL === "1") {
+    const user = await User.findById(payment.userId)
+    if (!user) return res.status(404).json({ message: "User not found" })
+    user.plan = payment.plan
+    user.credits += payment.credits
+    user.totalCredits += payment.credits
+    user.planExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    await user.save()
+
+    const sessionId = await redis.get(`user-session-${user._id}`)
+    if (sessionId) {
+       await redis.set(`session-${sessionId}`, JSON.stringify({
+          userId: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          plan: user.plan,
+          credits: user.credits,
+          totalCredits: user.totalCredits,
+          planExpiresAt: user.planExpiresAt
+       }), "EX", 7 * 24 * 60 * 60)
+    }
+ } else {
+    await axios.post(`${process.env.AUTH_SERVICE}/update-plan`,{userId:payment.userId,plan:payment.plan,credits:payment.credits})
+ }
 
  return res.status(200).json({message:"Payment Verified"})
 

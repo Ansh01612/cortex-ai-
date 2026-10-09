@@ -127,6 +127,40 @@ Keep all provider secrets server-side; only frontend values prefixed with
 
 ## Production deployment
 
+### Vercel
+
+The Vercel deployment uses one serverless API function for the existing API
+routers and serves the Vite frontend from the same project origin. Import the
+GitHub repository into Vercel and set:
+
+- Git branch: `initial-project-upload`
+- Root directory: `.`
+- Build command: `npm run build`
+- Output directory: `frontend/dist`
+- Install command: `npm install`
+
+Do not set `VITE_SERVER_URL` in Vercel; the frontend then calls the same-origin
+`/api` routes. Set these server-side Vercel environment variables:
+
+- `MONGODB_URI`: MongoDB Atlas URI using one shared application database
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+- `FIREBASE_SERVICE_ACCOUNT_JSON`: the complete Firebase Admin service-account
+  JSON, stored as a secret environment variable
+- `GROQ_API_KEY`, `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`, and `TAVILY_API_KEY`
+- `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`
+- `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_KEY`, and `AWS_BUCKET_NAME`
+- `QDRANT_API_KEY` and `QDRANT_URL`
+
+Also set the frontend build variables `VITE_FIREBASE_API_KEY` and
+`VITE_RAZORPAY_KEY_ID`. Add the final Vercel domain to Firebase Authentication's
+authorized domains. Keep `MONGODB_URI` and all provider credentials server-side;
+never prefix them with `VITE_`.
+
+The project depends on managed MongoDB and Upstash Redis in Vercel. The local
+Docker MongoDB/Redis containers are only for development. Hobby deployments
+have serverless execution and request-size limits; large PDF/image uploads or
+long-running agent tasks may need a paid plan or a separate worker service.
+
 The repository includes a GitHub Actions workflow at
 `.github/workflows/deploy.yml` for deploying backend images to AWS ECR/ECS and
 the frontend to S3/CloudFront. Configure the AWS credentials, resource names,
