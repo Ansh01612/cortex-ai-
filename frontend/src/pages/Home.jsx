@@ -1,5 +1,5 @@
-import { getRedirectResult, signInWithRedirect } from 'firebase/auth'
-import { useEffect, useState } from 'react'
+import { signInWithPopup } from 'firebase/auth'
+import { useState } from 'react'
 import { auth, googleProvider } from '../../utils/firebase'
 import api from '../../utils/axios'
 import { FcGoogle } from "react-icons/fc";
@@ -15,46 +15,17 @@ function Home() {
     const [loginError, setLoginError] = useState("")
     const [loginLoading, setLoginLoading] = useState(false)
 
-    useEffect(() => {
-        let isMounted = true
-
-        const completeRedirectLogin = async () => {
-            try {
-                const result = await getRedirectResult(auth)
-                if (!result) return
-
-                if (isMounted) {
-                    setLoginLoading(true)
-                }
-                const token = await result.user.getIdToken()
-                const { data } = await api.post("/api/auth/login", { token })
-                if (isMounted) {
-                    dispatch(setUserdata(data))
-                }
-            } catch (error) {
-                if (isMounted) {
-                    setLoginError(getLoginErrorMessage(error))
-                }
-            } finally {
-                if (isMounted) {
-                    setLoginLoading(false)
-                }
-            }
-        }
-
-        completeRedirectLogin()
-        return () => {
-            isMounted = false
-        }
-    }, [dispatch])
-
     const googleLogin = async () => {
         setLoginError("")
         setLoginLoading(true)
         try {
-            await signInWithRedirect(auth, googleProvider)
+            const result = await signInWithPopup(auth, googleProvider)
+            const token = await result.user.getIdToken()
+            const { data } = await api.post("/api/auth/login", { token })
+            dispatch(setUserdata(data))
         } catch (error) {
             setLoginError(getLoginErrorMessage(error))
+        } finally {
             setLoginLoading(false)
         }
     }
