@@ -69,42 +69,57 @@ function ChatInput() {
 
 
   const handleSendMessage = async () => {
+    const prompt = value.trim()
+    if (!prompt || isLoading) return
+
     dispatch(setIsLoading(true))
-    let conversation = selectedConversation
-    if (!conversation) {
-      dispatch(setMessages([]))
-      const conv = await createConversation()
-      dispatch(setSelectedConversation(conv))
+    try {
+      let conversation = selectedConversation
+      if (!conversation) {
+        dispatch(setMessages([]))
+        const conv = await createConversation()
+        if (!conv?._id) {
+          throw new Error("Could not create a conversation.")
+        }
+        dispatch(setSelectedConversation(conv))
 
-      dispatch(addConversation(conv))
-      conversation = conv
+        dispatch(addConversation(conv))
+        conversation = conv
+      }
+
+      if (conversation.title == "New Chat") {
+        await updateConversation({ id: conversation?._id, title: prompt })
+        dispatch(setConvTitle({ conversationId: conversation?._id, title: prompt.slice(0, 40) }))
+      }
+
+
+      const formData = new FormData()
+      formData.append("prompt", prompt)
+      formData.append("conversationId", conversation._id)
+      formData.append("agent", selectedAgent.toLowerCase())
+      if (selectedFile) {
+        formData.append("file", selectedFile)
+      }
+
+
+
+      dispatch(addMessage({ role: "user", content: prompt }))
+      setValue("")
+      const data = await sendMessage(formData)
+      if (typeof data?.answer !== "string" || !data.answer.trim()) {
+        throw new Error("The chat service returned an empty answer.")
+      }
+      dispatch(setArtifacts(data.artifacts || []))
+      dispatch(addMessage({ role: "assistant", content: data.answer, images: data.images }))
+    } catch (error) {
+      dispatch(addMessage({
+        role: "assistant",
+        content: `I couldn't get an answer: ${error.message}`
+      }))
+    } finally {
+      dispatch(setIsLoading(false))
+      setSelectedFile(null)
     }
-
-    if (conversation.title == "New Chat") {
-      await updateConversation({ id: conversation?._id, title: value.trim() })
-      dispatch(setConvTitle({ conversationId: conversation?._id, title: value.slice(0, 40) }))
-    }
-
-
-    console.log(selectedFile)
-    const formData = new FormData()
-    formData.append("prompt", value.trim())
-    formData.append("conversationId", conversation?._id)
-    formData.append("agent", selectedAgent.toLowerCase())
-    if (selectedFile) {
-      formData.append("file", selectedFile)
-    }
-
-
-
-    dispatch(addMessage({ role: "user", content: value.trim() }))
-    setValue("")
-    const data = await sendMessage(formData)
-    dispatch(setIsLoading(false))
-    setSelectedFile(null)
-    dispatch(setArtifacts(data.artifacts || []))
-    dispatch(addMessage({ role: "assistant", content: data?.answer, images: data?.images }))
-    console.log(data)
   }
 
   const agents = [

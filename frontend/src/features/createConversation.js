@@ -5,7 +5,7 @@ export const createConversation=async () => {
         const {data}=await api.get("/api/chat/create-conversation")
         return data
     } catch (error) {
-       console.log(error)
-       return []
+       const message = error.response?.data?.message || error.message || "Could not create a conversation."
+       throw new Error(message, { cause: error })
     }
 }

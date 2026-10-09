@@ -6,8 +6,8 @@ async function sendMessage(payload) {
     const {data}=await api.post("/api/agent/chat",payload)
     return data
  } catch (error) {
-    console.log(error)
-    return null
+    const message = error.response?.data?.message || error.message || "Could not reach the chat service."
+    throw new Error(message, { cause: error })
  }
 }
 

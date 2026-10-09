@@ -5,7 +5,7 @@ export const updateConversation=async (payload) => {
         const {data}=await api.post("/api/chat/update-conversation",payload)
         return data
     } catch (error) {
-       console.log(error)
-       return []
+       const message = error.response?.data?.message || error.message || "Could not update the conversation."
+       throw new Error(message, { cause: error })
     }
 }
