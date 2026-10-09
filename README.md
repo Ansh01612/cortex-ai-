@@ -43,8 +43,9 @@ git clone https://github.com/Ansh01612/cortex-ai-.git
 cd cortex-ai-
 ```
 
-Create a `.env` file in each location listed under [Environment configuration](#environment-configuration).
-Do not commit `.env` files or service-account credentials.
+Create a `.env` file in each location listed under [Environment configuration](#environment-configuration),
+and add the Firebase Admin service-account JSON described below. Do not commit
+`.env` files or service-account credentials.
 
 Install dependencies from each package directory:
 
@@ -65,50 +66,22 @@ cd ..\..\..\frontend
 npm install
 ```
 
-Start Redis from `backend`:
+Start the full local stack with one command from the project root:
 
 ```powershell
-cd ..\backend
-docker compose up -d
+.\start-dev.ps1
 ```
 
-Run each service in a separate PowerShell window. Start the four backend
-services before the gateway:
+The script starts Redis and any backend/frontend services that are not already
+running, opens the frontend at <http://localhost:5173>, and leaves service
+output visible in separate PowerShell windows. Keep those windows open. If
+PowerShell blocks local scripts, run it once using:
 
 ```powershell
-cd "path\to\cortex-ai-\backend\services\auth"
-npm run dev
+powershell -ExecutionPolicy Bypass -File .\start-dev.ps1
 ```
 
-```powershell
-cd "path\to\cortex-ai-\backend\services\chat"
-npm run dev
-```
-
-```powershell
-cd "path\to\cortex-ai-\backend\services\agent"
-npm run dev
-```
-
-```powershell
-cd "path\to\cortex-ai-\backend\services\billing"
-npm run dev
-```
-
-```powershell
-cd "path\to\cortex-ai-\backend\gateway"
-npm run dev
-```
-
-In another window, start the frontend:
-
-```powershell
-cd "path\to\cortex-ai-\frontend"
-npm run dev
-```
-
-Open the URL Vite prints, normally <http://localhost:5173>. Keep the service
-terminals running while using the application. Stop Redis when finished with:
+Stop Redis when finished with:
 
 ```powershell
 cd "path\to\cortex-ai-\backend"
