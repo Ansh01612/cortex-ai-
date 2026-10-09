@@ -1,4 +1,5 @@
-import { signInWithPopup } from 'firebase/auth'
+import { getRedirectResult, signInWithRedirect } from 'firebase/auth'
+import { useEffect, useState } from 'react'
 import { auth, googleProvider } from '../../utils/firebase'
 import api from '../../utils/axios'
 import { FcGoogle } from "react-icons/fc";
@@ -11,22 +12,51 @@ import Artifact from '../components/Artifact';
 function Home() {
     const {userData}=useSelector(state=>state.user)
     const dispatch=useDispatch()
-    const handleLogin = async (token) => {
-        try {
-            const { data } = await api.post("/api/auth/login", { token })
-            dispatch(setUserdata(data))
-        } catch (error) {
-            console.log(error)
-        }
-    }
+    const [loginError, setLoginError] = useState("")
+    const [loginLoading, setLoginLoading] = useState(false)
 
+    useEffect(() => {
+        let isMounted = true
+
+        const completeRedirectLogin = async () => {
+            try {
+                const result = await getRedirectResult(auth)
+                if (!result) return
+
+                if (isMounted) {
+                    setLoginLoading(true)
+                }
+                const token = await result.user.getIdToken()
+                const { data } = await api.post("/api/auth/login", { token })
+                if (isMounted) {
+                    dispatch(setUserdata(data))
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setLoginError(getLoginErrorMessage(error))
+                }
+            } finally {
+                if (isMounted) {
+                    setLoginLoading(false)
+                }
+            }
+        }
+
+        completeRedirectLogin()
+        return () => {
+            isMounted = false
+        }
+    }, [dispatch])
 
     const googleLogin = async () => {
-        const data = await signInWithPopup(auth, googleProvider)
-        const token = await data.user.getIdToken()
-        console.log(token)
-        await handleLogin(token)
-        console.log(data)
+        setLoginError("")
+        setLoginLoading(true)
+        try {
+            await signInWithRedirect(auth, googleProvider)
+        } catch (error) {
+            setLoginError(getLoginErrorMessage(error))
+            setLoginLoading(false)
+        }
     }
     return (
         <div className='h-screen  flex bg-[#0d0f14] text-white overflow-hidden'>
@@ -45,15 +75,31 @@ function Home() {
                         <p className='text-[13px] text-slate-500'>Please login to continue using the app.</p>
                     </div>
 
-                    <button className='w-full flex items-center justify-center gap-3 py-[11px] rounded-xl text-sm font-medium text-black/90 bg-white hover:bg-gray-200  transition-all duration-150 cursor-pointer' onClick={googleLogin}>
+                    {loginError && (
+                        <p role="alert" className="text-sm text-red-400">{loginError}</p>
+                    )}
+                    <button disabled={loginLoading} className='w-full flex items-center justify-center gap-3 py-[11px] rounded-xl text-sm font-medium text-black/90 bg-white hover:bg-gray-200 disabled:opacity-60 transition-all duration-150 cursor-pointer' onClick={googleLogin}>
                         <FcGoogle size={15} />
-                        Continue With Google
+                        {loginLoading ? "Connecting..." : "Continue With Google"}
                     </button>
                 </div>
             </div>}
           
         </div>
     )
+}
+
+function getLoginErrorMessage(error) {
+    switch (error?.code) {
+        case "auth/unauthorized-domain":
+            return "This domain is not authorized for Firebase sign-in. Add localhost in Firebase Authentication settings."
+        case "auth/operation-not-allowed":
+            return "Google sign-in is disabled. Enable Google in Firebase Authentication sign-in providers."
+        case "auth/network-request-failed":
+            return "Could not reach Google sign-in. Check your network connection and try again."
+        default:
+            return error?.response?.data?.message || error?.message || "Google sign-in failed. Please try again."
+    }
 }
 
 export default Home
