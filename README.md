@@ -15,7 +15,7 @@ Gateway (port 8000)
  Auth    Chat    Agent   Billing
  8001    8002    8003     8004
         |
- Redis (port 6379)     MongoDB Atlas
+ Redis (port 6379)     MongoDB (port 27017)
 ```
 
 The backend uses MongoDB for application data, Redis for sessions, Firebase
@@ -28,8 +28,10 @@ providers.
 - Node.js 22 or newer
 - npm
 - Docker Desktop with Docker Compose
-- MongoDB Atlas database and a database user
 - Firebase project configured for Google sign-in
+
+The local Compose setup runs MongoDB and Redis on localhost. MongoDB Atlas is
+optional if you prefer a remote database.
 
 Additional provider credentials are needed for the agent and billing features
 you enable.
@@ -72,16 +74,16 @@ Start the full local stack with one command from the project root:
 .\start-dev.ps1
 ```
 
-The script starts Redis and any backend/frontend services that are not already
-running, opens the frontend at <http://localhost:5173>, and leaves service
-output visible in separate PowerShell windows. Keep those windows open. If
-PowerShell blocks local scripts, run it once using:
+The script starts MongoDB, Redis, and any backend/frontend services that are
+not already running, opens the frontend at <http://localhost:5173>, and leaves
+service output visible in separate PowerShell windows. Keep those windows
+open. If PowerShell blocks local scripts, run it once using:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\start-dev.ps1
 ```
 
-Stop Redis when finished with:
+Stop the containers when finished with:
 
 ```powershell
 cd "path\to\cortex-ai-\backend"
@@ -103,17 +105,21 @@ them to Git.
 | `backend/services/agent/.env` | `PORT`, `MONGODB_URI`, `GROQ_API_KEY`, `GOOGLE_API_KEY`, `CHAT_SERVICE`, `AUTH_SERVICE`, `REDIS_URL`, `TAVILY_API_KEY`, `OPENROUTER_API_KEY`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_KEY`, `AWS_BUCKET_NAME`, `QDRANT_API_KEY`, `QDRANT_URL` |
 | `backend/services/billing/.env` | `PORT`, `MONGODB_URI`, `AUTH_SERVICE`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` |
 
-For local development, the backend service URLs normally use ports `8000`
+For local development, set each service's `MONGODB_URI` to its local database:
+`mongodb://localhost:27017/auth`, `/chat`, `/agent`, or `/billing`,
+respectively. Compose keeps local MongoDB data in a persistent Docker volume.
+If you want to use Atlas instead, configure the Atlas URI in each service's
+`.env` file and allow your development IP in Atlas Network Access.
+
+The backend service URLs normally use ports `8000`
 (gateway), `8001` (auth), `8002` (chat), `8003` (agent), and `8004` (billing).
 Set `FRONTEND_URL` to `http://localhost:5173`, and `VITE_SERVER_URL` to
-`http://localhost:8000`. The Redis Compose file binds Redis to localhost on
-port `6379`.
+`http://localhost:8000`. Compose binds Redis to localhost on port `6379` and
+MongoDB to localhost on port `27017`.
 
 The auth service also needs a Firebase Admin service-account JSON file at
 `backend/services/auth/serviceAccountKey.json`. This file is excluded from
-Git; obtain it from your Firebase project and keep it private. Set the
-MongoDB URI to a MongoDB Atlas connection string with a database user, and
-allow your development IP in the Atlas network-access settings.
+Git; obtain it from your Firebase project and keep it private.
 
 Agent provider variables are required only for the corresponding integrations.
 Keep all provider secrets server-side; only frontend values prefixed with
