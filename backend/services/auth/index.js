@@ -13,7 +13,16 @@ app.get("/",(req,res)=>{
     res.json({message:"hello from auth"})
 })
 
-app.listen(port,()=>{
-    console.log(`auth started at ${port}`)
-    connectDb()
-})
+const start = async () => {
+    try {
+        await connectDb()
+        app.listen(port,()=>{
+            console.log(`auth started at ${port}`)
+        })
+    } catch (error) {
+        console.error(error.message)
+        process.exit(1)
+    }
+}
+
+start()
